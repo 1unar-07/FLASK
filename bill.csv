@@ -1,0 +1,14 @@
+category,amount,description,date
+Food,1000,Brunch with colleagues,2025-01-08
+Food,600,Supermarket shopping,2025-01-09
+Food,1200,Family dinner,2025-01-10
+Transport,450,Taxi fare to office,2025-01-08
+Transport,300,Cab ride to doctor,2025-01-09
+Entertainment,350,Movie outing,2025-01-08
+Entertainment,250,Concert tickets,2025-01-10
+Utilities,550,Electricity bill,2025-01-09
+Utilities,400,Gas bill,2025-01-10
+Stocks/Mutual Fund,5000,Investment in stock market,2025-01-08
+Stocks/Mutual Fund,3000,Stock purchase for ABC Corp,2025-01-09
+Stocks/Mutual Fund,3500,Investment in equity mutual fund,2025-01-08
+Stocks/Mutual Fund,2500,Monthly SIP in debt mutual fund,2025-01-09

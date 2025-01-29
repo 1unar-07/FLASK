@@ -1,0 +1,11 @@
+streamlit
+firebase-admin
+requests
+pandas
+python-dotenv
+twilio
+matplotlib
+google-generativeai
+reportlab
+streamlit-option-menu
+plotly
