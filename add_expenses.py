@@ -3,21 +3,28 @@ import sqlite3
 import pandas as pd
 import google.generativeai as genai
 import streamlit as st
-import matplotlib.pyplot as plt
 from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+api_key = os.getenv("GOOGLE_GENAI_API_KEY")
 
-# Gemini API Configuration
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Configure Google Generative AI
+genai.configure(api_key=api_key)
 
-# Predefined categories
-CATEGORIES = [
-    'Food', 'Transport', 'Entertainment', 
-    'Utilities', 'Others', 'Stocks/Mutual Fund'
-]
+# Initialize Gemini Model
+model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+
+# Predefined categories and limits
+CATEGORIES = {
+    'Food & Groceries': 50000,
+    'Transport': 15000,
+    'Entertainment': 10000,
+    'Utilities': 12000,
+    'Others': 5000,
+    'Stocks/Mutual Fund': 30000
+}
 
 # Connect to SQLite database
 conn = sqlite3.connect('expenses.db', check_same_thread=False)
@@ -38,41 +45,36 @@ conn.commit()
 # Function to classify transaction using Gemini API
 def classify_transaction(description):
     prompt = f"""
-    Categorize the following transaction description into one of these categories: {', '.join(CATEGORIES)}.
+    You are an AI assistant trained to categorize financial transactions. 
+    Categorize the following transaction description into one of these categories: {', '.join(CATEGORIES.keys())}.
 
-    Transaction: "{description}"
+    Transaction Description: "{description}"
 
-    Respond with only the category name.
+    Respond with only the category name from the provided list.
     """
     try:
-        response = genai.chat(prompt)
+        response = model.generate_content(prompt)
         category = response.text.strip()
+        
         if category not in CATEGORIES:
-            return "Others"
+            return "Others"  # Default category if Gemini fails to match
+
         return category
     except Exception as e:
         st.error(f"Error categorizing transaction: {str(e)}")
         return "Others"
 
-# Function to plot expense summary
-def plot_expense_summary():
-    c.execute('SELECT category, SUM(amount) FROM expenses GROUP BY category')
-    data = c.fetchall()
-    
-    if not data:
-        st.warning("No expenses recorded yet.")
-        return
-    
-    categories, amounts = zip(*data)
-    plt.figure(figsize=(6, 6))
-    plt.pie(amounts, labels=categories, autopct='%1.1f%%', startangle=140, colors=['#ff9999','#66b3ff','#99ff99','#ffcc99', '#c2c2f0', '#ffb3e6'])
-    plt.title("Spending Summary")
-    st.pyplot(plt)
+# Function to calculate total spent in a category
+def get_total_spent(category):
+    c.execute('SELECT SUM(amount) FROM expenses WHERE category=?', (category,))
+    total = c.fetchone()[0] or 0  # If no records, default to 0
+    return total
 
 # Streamlit App
 def app():
     st.title("AI-Powered Expense Categorization")
 
+    # Option to add expense manually or upload CSV
     option = st.selectbox("Select how to add expenses:", ["Enter Data Manually", "Upload CSV"])
 
     if option == "Enter Data Manually":
@@ -86,12 +88,19 @@ def app():
             if submit_button:
                 category = classify_transaction(description)
 
+                # Insert data into the database
                 c.execute('INSERT INTO expenses (category, amount, description, date) VALUES (?, ?, ?, ?)',
                           (category, amount, description, date.strftime('%Y-%m-%d')))
                 conn.commit()
 
+                # Calculate total spent in the category after adding the expense
+                total_spent = get_total_spent(category)
+
+                # Show alert if total spent exceeds the limit for the category
+                if total_spent > CATEGORIES[category]:
+                    st.warning(f"ALERT: You have exceeded the limit for {category}! Total spent: ₹{total_spent}")
+
                 st.success(f"Expense added! {category} - ₹{amount} on {date.strftime('%Y-%m-%d')}")
-                plot_expense_summary()
 
     elif option == "Upload CSV":
         uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
@@ -107,15 +116,18 @@ def app():
                 for _, row in df.iterrows():
                     c.execute('INSERT INTO expenses (category, amount, description, date) VALUES (?, ?, ?, ?)',
                               (row['category'], row['amount'], row['description'], row['date']))
-                conn.commit()
+                    conn.commit()
+
+                    # Calculate total spent in the category after adding the expense
+                    total_spent = get_total_spent(row['category'])
+
+                    # Show alert if total spent exceeds the limit for the category
+                    if total_spent > CATEGORIES[row['category']]:
+                        st.warning(f"ALERT: You have exceeded the limit for {row['category']}! Total spent: ₹{total_spent}")
 
                 st.success(f"CSV uploaded and categorized successfully with {len(df)} entries!")
-                plot_expense_summary()
             else:
                 st.error("CSV must contain 'amount', 'description', and 'date' columns.")
-
-    st.subheader("Expense Summary")
-    plot_expense_summary()
 
 if __name__ == "__main__":
     app()
