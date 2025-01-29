@@ -8,7 +8,7 @@ load_dotenv()
 import home, add_expenses, account, view_expenses, about, dashboard
 
 st.set_page_config(
-    page_title="Financial Planning Hub",
+    page_title="Finance Tracker",
 )
 
 # Apply light grey background color to the sidebar and set text color to black
